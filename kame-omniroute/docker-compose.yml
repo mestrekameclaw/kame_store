@@ -1,0 +1,58 @@
+version: "3.7"
+
+services:
+
+  app_proxy:
+    environment:
+      # Format: <app-id>_<service-name>_1
+      APP_HOST: kame-omniroute_web_1
+      APP_PORT: 20128
+      # OmniRoute ships its own dashboard login AND an OpenAI-compatible /v1 API
+      # that external AI tools (Cursor, Claude Code, Codex...) reach with a Bearer
+      # key — they cannot send Umbrel's auth cookie. So we bypass Umbrel auth and
+      # rely on OmniRoute's own auth (admin password + per-key API auth).
+      PROXY_AUTH_ADD: "false"
+
+  web:
+    image: diegosouzapw/omniroute:3.8.48@sha256:badb560971fdc23c2fb84b3e8695116239ff215b4cca4b07076201a8efae7f0d
+    restart: on-failure
+    stop_grace_period: 40s
+    user: "1000:1000"
+    init: true
+    environment:
+      # Single-port mode: dashboard + /v1 API + websocket all on 20128.
+      PORT: "20128"
+      DATA_DIR: /app/data
+      # Initial admin dashboard password (first boot only). Umbrel derives a
+      # strong per-install value and shows it in the UI (deterministicPassword).
+      # Change it later in OmniRoute -> Settings -> Security.
+      INITIAL_PASSWORD: ${APP_PASSWORD}
+      # Allow the live-monitoring websocket to accept the Umbrel dashboard origin.
+      LIVE_WS_ALLOWED_ORIGINS: http://${DEVICE_DOMAIN_NAME}:${APP_PROXY_PORT}
+      LIVE_WS_ALLOWED_HOSTS: ${DEVICE_DOMAIN_NAME},${DEVICE_HOSTNAME}
+      # Rate-limit + provider-quota state is backed by the Redis sidecar so it
+      # survives restarts. Reach it by its unique Umbrel container name
+      # (<app-id>_<service>_1). The bare name "redis" is NOT safe here: every
+      # app shares umbrel_main_network, so a bare "redis" alias would collide
+      # with another app's redis. Umbrel forces this container_name scheme.
+      REDIS_URL: redis://kame-omniroute_redis_1:6379
+    depends_on:
+      redis:
+        condition: service_started
+    volumes:
+      # SQLite database + auto-generated secrets persist here.
+      - ${APP_DATA_DIR}/data:/app/data
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.mjs"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  redis:
+    image: redis:7.4.3@sha256:236e397c1d5ab7a94adaf1a51eec3ca8333b05fafcd6d423c6c7cc5987e519a0
+    user: "1000:1000"
+    restart: on-failure
+    volumes:
+      # RDB snapshots persist here (Redis default save policy + /data workdir).
+      - ${APP_DATA_DIR}/data/redis:/data

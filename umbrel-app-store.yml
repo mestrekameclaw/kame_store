@@ -1,0 +1,2 @@
+id: "kame" # Prefixo único de todos os apps desta loja. Apenas letras (a-z) e hífens.
+name: "Kame" # Aparece na UI do umbrelOS como "Kame App Store".

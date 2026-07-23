@@ -1,0 +1,43 @@
+manifestVersion: 1
+id: kame-omniroute
+category: AI
+name: OmniRoute
+version: "3.8.48"
+tagline: One endpoint for 290+ AI providers and 500+ models
+description: >-
+  OmniRoute is a free, MIT-licensed AI gateway: a single OpenAI-compatible
+  endpoint that routes to 290+ providers (90+ of them free) and 500+ models —
+  including Claude, GPT, Gemini, DeepSeek, Kimi, GLM and MiniMax.
+
+
+  Point Claude Code, Codex, Cursor, Cline, OpenCode or Copilot at one URL and
+  let OmniRoute handle quota-aware auto-fallback between providers, so you never
+  stop coding when one runs out. Built-in token compression (RTK + Caveman) can
+  cut usage by 15–95%.
+
+
+  After installing: open the dashboard, add a free provider (Kiro, OpenCode Free
+  or Pollinations — no credit card needed), create an API key, then set your
+  tool's base URL to http://<your-umbrel-host>:20128/v1 and model to "auto".
+
+
+  The dashboard is protected by its own admin password (shown above). OmniRoute
+  auto-generates and persists its signing/encryption secrets on first launch.
+releaseNotes: >-
+  First release of OmniRoute on the Kame App Store — packaged from upstream
+  v3.8.48. Runs the lean single-service image (dashboard + OpenAI-compatible API
+  on one port). Data and secrets persist across restarts and updates.
+developer: Diego Souza
+website: https://omniroute.online
+dependencies: []
+repo: https://github.com/diegosouzapw/OmniRoute
+support: https://github.com/diegosouzapw/OmniRoute/issues
+port: 20128
+gallery: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+deterministicPassword: true
+icon: https://raw.githubusercontent.com/diegosouzapw/OmniRoute/v3.8.48/public/icon-512.png
+submitter: Kame App Store
+submission: https://github.com/diegosouzapw/OmniRoute
