@@ -1,1 +1,10 @@
 .DS_Store
+
+# Local secrets must never enter the public app store repository.
+.env
+.env.*
+!.env.example
+
+# Test/runtime caches.
+__pycache__/
+*.py[cod]

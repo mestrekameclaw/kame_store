@@ -1,0 +1,94 @@
+#!/bin/sh
+set -eu
+
+SECRETS_DIR="${SECRETS_DIR:-/run/secrets}"
+PGADMIN_DATA_DIR="${PGADMIN_DATA_DIR:-/var/lib/pgadmin}"
+POSTGRES_DATA_DIR="${POSTGRES_DATA_DIR:-/var/lib/postgresql}"
+POSTGRES_UID="${POSTGRES_UID:-70}"
+POSTGRES_GID="${POSTGRES_GID:-70}"
+PGADMIN_UID="${PGADMIN_UID:-1000}"
+PGADMIN_GID="${PGADMIN_GID:-1000}"
+
+canonical_secret="${SECRETS_DIR}/postgres-password"
+pgdata_version="${POSTGRES_DATA_DIR}/18/docker/PG_VERSION"
+pgpass_dir="${PGADMIN_DATA_DIR}/storage/admin_umbrel.local"
+pgpass_file="${pgpass_dir}/.pgpass"
+secret_tmp=""
+pgpass_tmp=""
+
+fail() {
+  printf 'init-secrets: %s\n' "$*" >&2
+  exit 1
+}
+
+cleanup() {
+  [ -z "$secret_tmp" ] || rm -f "$secret_tmp"
+  [ -z "$pgpass_tmp" ] || rm -f "$pgpass_tmp"
+}
+trap cleanup 0 1 2 15
+
+validate_password() {
+  candidate="$1"
+  [ "${#candidate}" -eq 64 ] || fail "canonical PostgreSQL password must be exactly 64 characters"
+  case "$candidate" in
+    *[!A-Za-z0-9_-]*) fail "canonical PostgreSQL password contains unsupported characters" ;;
+  esac
+}
+
+mkdir -p "$SECRETS_DIR"
+
+if [ -L "$canonical_secret" ]; then
+  fail "canonical PostgreSQL password must not be a symbolic link"
+fi
+
+secret_created="false"
+if [ -e "$canonical_secret" ]; then
+  [ -f "$canonical_secret" ] || fail "canonical PostgreSQL password is not a regular file"
+else
+  [ ! -s "$pgdata_version" ] || fail "existing PostgreSQL cluster has no canonical password; refusing to replace it"
+  : "${APP_POSTGRES_PASSWORD:?APP_POSTGRES_PASSWORD is required on first start}"
+  validate_password "$APP_POSTGRES_PASSWORD"
+
+  secret_tmp="$(mktemp "${SECRETS_DIR}/.postgres-password.XXXXXX")"
+  printf '%s' "$APP_POSTGRES_PASSWORD" > "$secret_tmp"
+  chmod 0400 "$secret_tmp"
+  if [ "$(id -u)" -eq 0 ]; then
+    chown "${POSTGRES_UID}:${POSTGRES_GID}" "$secret_tmp"
+  fi
+
+  # A hard link is an atomic, no-clobber publication primitive. If another
+  # initializer wins the race, ln fails and we preserve its canonical value.
+  if ln "$secret_tmp" "$canonical_secret" 2>/dev/null; then
+    secret_created="true"
+  elif [ ! -e "$canonical_secret" ]; then
+    fail "could not atomically publish canonical PostgreSQL password"
+  fi
+  rm -f "$secret_tmp"
+  secret_tmp=""
+fi
+
+[ ! -L "$canonical_secret" ] || fail "canonical PostgreSQL password must not be a symbolic link"
+[ -f "$canonical_secret" ] || fail "canonical PostgreSQL password is not a regular file"
+canonical_password="$(cat "$canonical_secret")"
+validate_password "$canonical_password"
+chmod 0400 "$canonical_secret"
+if [ "$(id -u)" -eq 0 ]; then
+  chown "${POSTGRES_UID}:${POSTGRES_GID}" "$canonical_secret"
+fi
+if [ "$secret_created" = "true" ]; then
+  printf '%s\n' "created canonical PostgreSQL secret"
+else
+  printf '%s\n' "preserved canonical PostgreSQL secret"
+fi
+
+# pgAdmin reads this managed passfile directly from its persistent user storage.
+# Rebuilding it from the canonical secret repairs stale or partial pgAdmin restores.
+mkdir -p "$pgpass_dir"
+pgpass_tmp="$(mktemp "${pgpass_dir}/.pgpass.XXXXXX")"
+printf '%s\n' "kame-postgres_postgres_1:5432:postgres:postgres:${canonical_password}" > "$pgpass_tmp"
+chmod 0400 "$pgpass_tmp"
+if [ "$(id -u)" -eq 0 ]; then
+  chown "${PGADMIN_UID}:${PGADMIN_GID}" "$PGADMIN_DATA_DIR/storage" "$pgpass_dir" "$pgpass_tmp"
+fi
+mv -f "$pgpass_tmp" "$pgpass_file"
+pgpass_tmp=""

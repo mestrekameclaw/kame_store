@@ -22,6 +22,7 @@ sudo ~/umbrel/scripts/repo update
 | App | Descrição | Versão |
 |-----|-----------|--------|
 | [OmniRoute](kame-omniroute/) | Gateway de IA — um endpoint OpenAI-compatível para 290+ provedores e 500+ modelos | 3.8.48 |
+| [PostgreSQL + pgAdmin](kame-postgres/) | Banco PostgreSQL persistente com administração web pelo pgAdmin | 1.0.0 |
 
 ## Estrutura
 

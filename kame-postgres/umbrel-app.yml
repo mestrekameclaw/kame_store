@@ -1,0 +1,42 @@
+manifestVersion: 1
+id: kame-postgres
+category: developer
+name: PostgreSQL + pgAdmin
+version: "1.0.0"
+tagline: A durable PostgreSQL database with pgAdmin web management
+description: >-
+  Run PostgreSQL 18 with pgAdmin 4 directly on your Umbrel. pgAdmin is protected
+  by Umbrel's application proxy and has the bundled PostgreSQL server registered
+  automatically. Database and pgAdmin state persist across normal restarts and
+  app updates.
+
+
+  Initial credentials are generated uniquely for your Umbrel and shown in the
+  app's Credentials panel. Sign in to pgAdmin as admin@umbrel.local. PostgreSQL
+  uses a separate per-install superuser secret that is registered with pgAdmin
+  automatically, reducing the impact if a client database credential is exposed.
+  No password is stored in this public app repository.
+
+
+  PostgreSQL listens on port 5432 inside Umbrel's shared app network, but is not
+  published to your LAN or the internet by default. Other Umbrel apps can connect
+  to kame-postgres_postgres_1:5432 with explicit credentials.
+releaseNotes: >-
+  Initial release. Includes PostgreSQL 18.6 and pgAdmin 4 9.17, deterministic
+  separated per-install credentials, SCRAM-SHA-256 host authentication,
+  persistent data, checksums, authenticated health checks, pinned
+  multi-architecture images, and a pre-registered local PostgreSQL server.
+developer: PostgreSQL Global Development Group and pgAdmin Development Team
+website: https://www.pgadmin.org/
+dependencies: []
+repo: https://github.com/postgres/postgres
+support: https://github.com/mestrekameclaw/kame_store/issues
+port: 5050
+gallery: []
+path: ""
+defaultUsername: "admin@umbrel.local"
+defaultPassword: ""
+deterministicPassword: true
+icon: https://raw.githubusercontent.com/pgadmin-org/pgadmin4/REL-9_17/web/pgadmin/static/img/logo-256.png
+submitter: Kame App Store
+submission: https://github.com/mestrekameclaw/kame_store
