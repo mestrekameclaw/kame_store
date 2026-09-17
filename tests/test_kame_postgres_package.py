@@ -18,7 +18,7 @@ class PostgresPackageContract(unittest.TestCase):
             "umbrel-app.yml",
             "docker-compose.yml",
             "exports.sh",
-            "init-secrets.sh",
+            "hooks/pre-start",
             "servers.json",
             "README.md",
             "data/postgres/.gitkeep",
@@ -87,7 +87,8 @@ class PostgresPackageContract(unittest.TestCase):
         self.assertIn("${APP_DATA_DIR}/data/postgres:/var/lib/postgresql", compose)
         self.assertIn("${APP_DATA_DIR}/data/pgadmin:/var/lib/pgadmin", compose)
         self.assertIn("${APP_DATA_DIR}/data/secrets:/run/secrets:ro", compose)
-        self.assertIn("${APP_DATA_DIR}/init-secrets.sh:/app/init-secrets.sh:ro", compose)
+        self.assertIn("${APP_DATA_DIR}/hooks/pre-start:/app/init-secrets.sh:ro", compose)
+        self.assertIn('RUN_IN_INIT_CONTAINER: "1"', compose)
 
     def test_postgres_is_not_published_to_the_host(self) -> None:
         compose = (APP / "docker-compose.yml").read_text()
@@ -117,6 +118,17 @@ class PostgresPackageContract(unittest.TestCase):
         self.assertEqual(server["ConnectionParameters"]["passfile"], ".pgpass")
         serialized = json.dumps(servers).lower()
         self.assertNotIn("password", serialized)
+
+    def test_managed_passfile_authenticates_the_admin_role_in_all_databases(self) -> None:
+        initializer = (APP / "hooks" / "pre-start").read_text()
+        self.assertIn(
+            'kame-postgres_postgres_1:5432:*:postgres:${canonical_password}',
+            initializer,
+        )
+        self.assertNotIn(
+            'kame-postgres_postgres_1:5432:postgres:postgres:${canonical_password}',
+            initializer,
+        )
 
 
 if __name__ == "__main__":

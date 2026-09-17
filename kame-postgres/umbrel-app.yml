@@ -2,7 +2,7 @@ manifestVersion: 1
 id: kame-postgres
 category: developer
 name: PostgreSQL + pgAdmin
-version: "1.0.0"
+version: "1.0.1"
 tagline: A durable PostgreSQL database with pgAdmin web management
 description: >-
   Run PostgreSQL 18 with pgAdmin 4 directly on your Umbrel. pgAdmin is protected
@@ -22,10 +22,9 @@ description: >-
   published to your LAN or the internet by default. Other Umbrel apps can connect
   to kame-postgres_postgres_1:5432 with explicit credentials.
 releaseNotes: >-
-  Initial release. Includes PostgreSQL 18.6 and pgAdmin 4 9.17, deterministic
-  separated per-install credentials, SCRAM-SHA-256 host authentication,
-  persistent data, checksums, authenticated health checks, pinned
-  multi-architecture images, and a pre-registered local PostgreSQL server.
+  Fix pgAdmin authentication when opening databases other than the bundled
+  maintenance database. Existing PostgreSQL data, roles, and credentials are
+  preserved; the app regenerates only pgAdmin's managed passfile.
 developer: PostgreSQL Global Development Group and pgAdmin Development Team
 website: https://www.pgadmin.org/
 dependencies: []

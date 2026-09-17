@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "kame-postgres" / "init-secrets.sh"
+SCRIPT = ROOT / "kame-postgres" / "hooks" / "pre-start"
 TEST_TMP_ROOT = Path(os.environ.get("KAME_TEST_TMPDIR", tempfile.gettempdir()))
 
 
@@ -25,6 +25,7 @@ class SecretLifecycle(unittest.TestCase):
 
         return os.environ | {
             "APP_POSTGRES_PASSWORD": derived,
+            "RUN_IN_INIT_CONTAINER": "1",
             "SECRETS_DIR": str(secrets),
             "PGADMIN_DATA_DIR": str(pgadmin),
             "POSTGRES_DATA_DIR": str(postgres),
@@ -43,6 +44,21 @@ class SecretLifecycle(unittest.TestCase):
             check=False,
         )
 
+    def test_host_lifecycle_hook_is_a_noop(self) -> None:
+        with tempfile.TemporaryDirectory(dir=TEST_TMP_ROOT) as temp:
+            root = Path(temp)
+            env = self.init_env(root, "a" * 64)
+            env.pop("RUN_IN_INIT_CONTAINER")
+            result = subprocess.run(
+                ["/bin/sh", str(SCRIPT)],
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertFalse((root / "secrets" / "postgres-password").exists())
+
     def test_first_start_creates_restrictive_canonical_secret_and_passfile(self) -> None:
         with tempfile.TemporaryDirectory(dir=TEST_TMP_ROOT) as temp:
             root = Path(temp)
@@ -54,7 +70,7 @@ class SecretLifecycle(unittest.TestCase):
             self.assertEqual(secret.read_text(), password)
             self.assertEqual(
                 passfile.read_text(),
-                f"kame-postgres_postgres_1:5432:postgres:postgres:{password}\n",
+                f"kame-postgres_postgres_1:5432:*:postgres:{password}\n",
             )
             self.assertEqual(stat.S_IMODE(secret.stat().st_mode), 0o400)
             self.assertEqual(stat.S_IMODE(passfile.stat().st_mode), 0o400)
@@ -101,8 +117,9 @@ class SecretLifecycle(unittest.TestCase):
             self.assertEqual((root / "secrets" / "postgres-password").read_text(), original)
             self.assertEqual(
                 passfile.read_text(),
-                f"kame-postgres_postgres_1:5432:postgres:postgres:{original}\n",
+                f"kame-postgres_postgres_1:5432:*:postgres:{original}\n",
             )
+            self.assertEqual(stat.S_IMODE(passfile.stat().st_mode), 0o400)
 
     def test_existing_cluster_without_canonical_secret_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory(dir=TEST_TMP_ROOT) as temp:

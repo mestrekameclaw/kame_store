@@ -1,6 +1,12 @@
 #!/bin/sh
 set -eu
 
+# Umbrel executes this file as a lifecycle hook on the host before each app
+# start. The same updated file is mounted into the one-shot init container.
+# Only that container has this explicit flag, so host hook execution remains a
+# no-op and never touches host paths such as /run/secrets.
+[ "${RUN_IN_INIT_CONTAINER:-}" = "1" ] || exit 0
+
 SECRETS_DIR="${SECRETS_DIR:-/run/secrets}"
 PGADMIN_DATA_DIR="${PGADMIN_DATA_DIR:-/var/lib/pgadmin}"
 POSTGRES_DATA_DIR="${POSTGRES_DATA_DIR:-/var/lib/postgresql}"
@@ -85,7 +91,11 @@ fi
 # Rebuilding it from the canonical secret repairs stale or partial pgAdmin restores.
 mkdir -p "$pgpass_dir"
 pgpass_tmp="$(mktemp "${pgpass_dir}/.pgpass.XXXXXX")"
-printf '%s\n' "kame-postgres_postgres_1:5432:postgres:postgres:${canonical_password}" > "$pgpass_tmp"
+# The bundled pgAdmin connection starts at the `postgres` maintenance database,
+# but users must be able to browse databases created afterwards as the same
+# administrative role. A literal `postgres` database field causes libpq to
+# omit the password for every other database.
+printf '%s\n' "kame-postgres_postgres_1:5432:*:postgres:${canonical_password}" > "$pgpass_tmp"
 chmod 0400 "$pgpass_tmp"
 if [ "$(id -u)" -eq 0 ]; then
   chown "${PGADMIN_UID}:${PGADMIN_GID}" "$PGADMIN_DATA_DIR/storage" "$pgpass_dir" "$pgpass_tmp"

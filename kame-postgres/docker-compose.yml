@@ -15,13 +15,14 @@ services:
       - no-new-privileges:true
     environment:
       APP_POSTGRES_PASSWORD: ${APP_POSTGRES_PASSWORD}
+      RUN_IN_INIT_CONTAINER: "1"
       POSTGRES_UID: "70"
       POSTGRES_GID: "70"
       PGADMIN_UID: "1000"
       PGADMIN_GID: "1000"
     entrypoint: ["/bin/sh", "/app/init-secrets.sh"]
     volumes:
-      - ${APP_DATA_DIR}/init-secrets.sh:/app/init-secrets.sh:ro
+      - ${APP_DATA_DIR}/hooks/pre-start:/app/init-secrets.sh:ro
       - ${APP_DATA_DIR}/data/secrets:/run/secrets
       - ${APP_DATA_DIR}/data/postgres:/var/lib/postgresql:ro
       - ${APP_DATA_DIR}/data/pgadmin:/var/lib/pgadmin
